@@ -1,0 +1,6 @@
+.product-detail-message {
+  min-height: 280px;
+  padding: 110px 8%;
+  text-align: center;
+  color: var(--muted);
+}

@@ -1,0 +1,396 @@
+.reference-hero {
+  display: grid;
+  grid-template-columns: minmax(330px, .78fr) minmax(0, 1.22fr);
+  align-items: center;
+  gap: clamp(20px, 3vw, 48px);
+  min-height: min(760px, calc(100vh - 82px));
+  padding: 56px 6%;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 74% 48%, rgba(35, 79, 111, .28), transparent 44%),
+    linear-gradient(115deg, #020b13 0%, #071725 56%, #0b1c2b 100%);
+}
+
+.reference-hero::before {
+  content: none;
+}
+
+.reference-hero .hero-panel {
+  inset: 0 auto 0 0;
+  width: 44%;
+  height: 100%;
+  background: linear-gradient(105deg, rgba(12, 34, 52, .88), rgba(12, 34, 52, 0));
+  clip-path: polygon(0 0, 82% 0, 100% 50%, 78% 100%, 0 100%);
+  pointer-events: none;
+}
+
+.reference-hero .hero-content {
+  z-index: 20;
+  width: auto;
+  max-width: 560px;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  animation: heroContentIn .75s ease both;
+}
+
+.reference-hero .eyebrow {
+  margin: 0 0 24px;
+  color: var(--accent);
+  font-size: .7rem;
+  letter-spacing: .2em;
+}
+
+.reference-hero h1 {
+  margin: 0 0 20px;
+  font-size: clamp(3rem, 5.3vw, 5.25rem);
+  line-height: .98;
+  letter-spacing: -.055em;
+}
+
+.reference-hero h1 strong {
+  color: #65a8e2 !important;
+}
+
+.reference-hero .hero-description {
+  max-width: 440px;
+  margin: 0;
+  color: #c5d0da;
+  font-size: clamp(.92rem, 1.1vw, 1.04rem);
+  line-height: 1.7;
+}
+
+.reference-hero .hero-buttons {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 26px 0 0;
+}
+
+.reference-hero .primary-button {
+  background: var(--accent);
+}
+
+.reference-hero .secondary-button {
+  border-color: rgba(255, 255, 255, .38);
+  background: rgba(255, 255, 255, .04);
+}
+
+.reference-hero .hero-machine-collage {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  max-width: 790px;
+  height: clamp(440px, 43vw, 590px);
+  justify-self: end;
+  overflow: visible;
+}
+
+.reference-hero .hero-scene {
+  position: absolute;
+  overflow: hidden;
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, .16);
+  background: #101c27;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, .34);
+  animation: heroSceneIn .8s cubic-bezier(.2, .7, .2, 1) both;
+  transition: box-shadow .35s ease;
+}
+
+.reference-hero .hero-scene img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .65s cubic-bezier(.2, .7, .2, 1);
+}
+
+.reference-hero .hero-scene:hover {
+  z-index: 25;
+  box-shadow: 0 26px 56px rgba(0, 0, 0, .48);
+}
+
+.reference-hero .hero-scene:hover img {
+  transform: scale(1.055);
+}
+
+.reference-hero .hero-scene--main {
+  z-index: 10;
+  top: 15%;
+  left: 17%;
+  width: 57%;
+  height: 70%;
+  clip-path: polygon(18% 0, 82% 0, 100% 50%, 82% 100%, 18% 100%, 0 50%);
+  animation-delay: .12s;
+}
+
+.reference-hero .hero-scene--main img {
+  object-position: center 48%;
+}
+
+.reference-hero .hero-scene--top-right {
+  z-index: 4;
+  top: 0;
+  right: 0;
+  width: 48%;
+  height: 39%;
+  clip-path: polygon(18% 0, 100% 0, 100% 100%, 0 100%);
+  animation-delay: .22s;
+}
+
+.reference-hero .hero-scene--top-right img {
+  object-position: center 55%;
+}
+
+.reference-hero .hero-scene--bottom-left {
+  z-index: 5;
+  bottom: 2%;
+  left: 0;
+  width: 46%;
+  height: 37%;
+  clip-path: polygon(0 0, 100% 0, 80% 100%, 0 100%);
+  animation-delay: .32s;
+}
+
+.reference-hero .hero-scene--bottom-left img {
+  object-position: center 52%;
+}
+
+.reference-hero .hero-scene--bottom-right {
+  z-index: 3;
+  right: 0;
+  bottom: 2%;
+  width: 49%;
+  height: 37%;
+  clip-path: polygon(20% 0, 100% 0, 100% 100%, 0 100%);
+  animation-delay: .42s;
+}
+
+.reference-hero .hero-scene--bottom-right img {
+  object-position: center 54%;
+}
+
+.reference-hero .hero-scene--right-detail {
+  z-index: 6;
+  top: 37%;
+  right: 0;
+  width: 25%;
+  height: 27%;
+  clip-path: polygon(25% 0, 100% 0, 100% 100%, 0 100%);
+  animation-delay: .5s;
+}
+
+.reference-hero .hero-scene--right-detail img {
+  object-position: center 50%;
+}
+
+.reference-hero .collage-accent {
+  position: absolute;
+  z-index: 30;
+  display: block;
+  width: 13px;
+  pointer-events: none;
+  transform: skewX(-30deg);
+}
+
+.reference-hero .collage-accent--orange {
+  top: -2%;
+  right: 30%;
+  height: 28%;
+  background: var(--accent);
+}
+
+.reference-hero .collage-accent--blue {
+  right: 35%;
+  bottom: -2%;
+  height: 30%;
+  background: #174a75;
+}
+
+@keyframes heroContentIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes heroSceneIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1050px) {
+  .reference-hero {
+    grid-template-columns: minmax(290px, .8fr) minmax(0, 1.2fr);
+    gap: 20px;
+    padding-right: 4%;
+    padding-left: 4%;
+  }
+
+  .reference-hero h1 {
+    font-size: clamp(2.8rem, 5.5vw, 4.2rem);
+  }
+
+  .reference-hero .hero-machine-collage {
+    height: clamp(410px, 48vw, 510px);
+  }
+}
+
+@media (max-width: 800px) {
+  .reference-hero {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+    gap: 20px;
+    padding: 58px 6% 44px;
+  }
+
+  .reference-hero .hero-panel {
+    width: 100%;
+    height: 46%;
+    clip-path: polygon(0 0, 100% 0, 100% 86%, 0 100%);
+  }
+
+  .reference-hero .hero-content {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  .reference-hero .hero-machine-collage {
+    width: min(100%, 690px);
+    height: clamp(390px, 72vw, 500px);
+    justify-self: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .reference-hero {
+    gap: 12px;
+    padding: 48px 5% 34px;
+  }
+
+  .reference-hero h1 {
+    font-size: clamp(2.65rem, 11.5vw, 3.5rem);
+    letter-spacing: -.045em;
+  }
+
+  .reference-hero .hero-description {
+    font-size: .94rem;
+  }
+
+  .reference-hero .hero-buttons {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    margin-top: 22px;
+  }
+
+  .reference-hero .primary-button,
+  .reference-hero .secondary-button {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  .reference-hero .hero-machine-collage {
+    height: clamp(350px, 100vw, 410px);
+  }
+
+  .reference-hero .hero-scene--main {
+    left: 14%;
+    width: 63%;
+  }
+
+  .reference-hero .hero-scene--top-right,
+  .reference-hero .hero-scene--bottom-right {
+    width: 48%;
+  }
+
+  .reference-hero .hero-scene--bottom-left {
+    width: 48%;
+  }
+
+  .reference-hero .hero-scene--right-detail {
+    width: 27%;
+  }
+
+  .reference-hero .collage-accent {
+    width: 9px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reference-hero .hero-content,
+  .reference-hero .hero-scene {
+    animation: none;
+  }
+
+  .reference-hero .hero-scene,
+  .reference-hero .hero-scene img {
+    transition: none;
+  }
+}
+
+/* Simple four-photo grid with a restrained hover zoom. */
+.reference-hero .hero-machine-collage {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  height: clamp(420px, 40vw, 540px);
+  overflow: hidden;
+}
+
+.reference-hero .hero-scene {
+  position: relative;
+  inset: auto;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  clip-path: none;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 16px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .28);
+}
+
+.reference-hero .hero-scene:hover {
+  z-index: 2;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, .4);
+}
+
+.reference-hero .hero-scene img {
+  transform: scale(1);
+}
+
+.reference-hero .hero-scene:hover img {
+  transform: scale(1.06);
+}
+
+@media (max-width: 800px) {
+  .reference-hero .hero-machine-collage {
+    height: clamp(380px, 72vw, 500px);
+  }
+}
+
+@media (max-width: 480px) {
+  .reference-hero .hero-machine-collage {
+    height: clamp(330px, 100vw, 400px);
+    gap: 10px;
+  }
+
+  .reference-hero .hero-scene {
+    border-radius: 12px;
+  }
+}
