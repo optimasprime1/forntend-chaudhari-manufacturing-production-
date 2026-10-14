@@ -1,6 +1,7 @@
 // products is now populated from the backend instead of being hardcoded.
 let products = [];
 let productLoadError = null;
+let productRequest = null;
 const WHATSAPP_NUMBER = '919033720758';
 
 document.addEventListener('copy', event => {
@@ -70,20 +71,31 @@ async function loadStatistics() {
 }
 
 // ---- Products (GET /api/products) ----
-async function loadProducts() {
-  try {
-    const res = await fetch(`${API_BASE}/products`);
-    if (!res.ok) throw new Error('Failed to load products');
-    const body = await res.json();
-    const rows = Array.isArray(body) ? body : body.data;
-    if (!Array.isArray(rows)) throw new Error('Products API returned an invalid response.');
-    products = rows.map(normalizeProduct);
-    productLoadError = null;
-  } catch (err) {
-    console.error('Products API unavailable.', err);
-    productLoadError = err;
-    products = [];
-  }
+async function loadProducts(force = false) {
+  if (!force && products.length) return products;
+  if (!force && productRequest) return productRequest;
+
+  productRequest = (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/products`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('Failed to load products');
+      const body = await res.json();
+      const rows = Array.isArray(body) ? body : body.data;
+      if (!Array.isArray(rows)) throw new Error('Products API returned an invalid response.');
+      products = rows.map(normalizeProduct);
+      productLoadError = null;
+      return products;
+    } catch (err) {
+      console.error('Products API unavailable.', err);
+      productLoadError = err;
+      products = [];
+      throw err;
+    } finally {
+      productRequest = null;
+    }
+  })();
+
+  return productRequest;
 }
 
 function normalizeProduct(product) {
@@ -290,12 +302,11 @@ function formSetup() {
   const productOptions = document.getElementById('productOptions');
   setupLocationAutocomplete();
 
-  // Populate the product dropdown from the backend so it always matches
-  // whatever products currently exist in the database.
-  fetch(`${API_BASE}/products`)
-    .then(res => res.ok ? res.json() : Promise.reject(res))
-    .then(body => {
-      const list = body.data || body;
+  // Reuse the already-loaded product list when available so the form doesn't
+  // trigger a duplicate fetch on every page visit.
+  loadProducts()
+    .then(() => {
+      const list = products.length ? products : [];
       const preselectedProduct = new URLSearchParams(location.search).get('product');
       list.forEach(p => {
         const optionLabel = document.createElement('label');
