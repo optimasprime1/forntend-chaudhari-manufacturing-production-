@@ -368,11 +368,13 @@ function formSetup() {
       ['product', field => field.querySelector('input[type="checkbox"]:checked') !== null, 'Please select at least one product.'],
       ['message', field => field.value.trim().length >= 5, 'Please describe your requirements.']
     ];
+    const productFieldContainer = document.querySelector('.product-field');
     checks.forEach(([id, test, msg]) => {
       const x = document.getElementById(id);
       const er = id === 'product'
-        ? x.querySelector('.error')
-        : x.parentElement.querySelector('.error');
+        ? productFieldContainer?.querySelector('.error') || null
+        : x.parentElement?.querySelector('.error') || null;
+      if (!er) return;
       if (!test(x)) { er.textContent = msg; ok = false; } else er.textContent = '';
     });
     if (!ok) return;
@@ -380,7 +382,8 @@ function formSetup() {
     const name = document.getElementById('name').value.trim();
     const phone = document.getElementById('phone').value.trim();
     const email = document.getElementById('email').value.trim();
-    const userLocation = document.getElementById('location').value.trim();
+    const locationInput = document.getElementById('location');
+    const userLocation = locationInput ? locationInput.value.trim() : '';
     const selectedProducts = Array.from(productOptions.querySelectorAll('input[type="checkbox"]:checked'))
       .map(checkbox => checkbox.value.trim())
       .filter(Boolean);
