@@ -11,7 +11,30 @@ document.addEventListener('copy', event => {
 
 document.addEventListener('DOMContentLoaded', () => {
   const t = document.querySelector('.menu-toggle'), n = document.querySelector('.nav-links');
-  if (t) t.onclick = () => n.classList.toggle('show');
+  if (t && n) {
+    t.onclick = () => {
+      const isOpen = n.classList.toggle('show');
+      t.setAttribute('aria-expanded', String(isOpen));
+      t.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
+    };
+
+    n.addEventListener('click', event => {
+      if (event.target instanceof Element && event.target.closest('a')) {
+        n.classList.remove('show');
+        t.setAttribute('aria-expanded', 'false');
+        t.setAttribute('aria-label', 'Open navigation menu');
+      }
+    });
+
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && n.classList.contains('show')) {
+        n.classList.remove('show');
+        t.setAttribute('aria-expanded', 'false');
+        t.setAttribute('aria-label', 'Open navigation menu');
+        t.focus();
+      }
+    });
+  }
 
   const ob = new IntersectionObserver(es => es.forEach(e => {
     if (e.isIntersecting) {
