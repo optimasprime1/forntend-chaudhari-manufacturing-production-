@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ob.unobserve(e.target);
     }
   }), { threshold: .15 });
+  document.body.classList.add('reveal-ready');
   document.querySelectorAll('.reveal').forEach(x => ob.observe(x));
 
   // Statistics: fetch live numbers from the backend and populate any
