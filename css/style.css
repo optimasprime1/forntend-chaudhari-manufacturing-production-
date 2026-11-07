@@ -980,9 +980,12 @@ footer b {
 }
 
 .reveal {
-  opacity: 0;
-  transform: translateY(22px);
   transition: .7s
+}
+
+body.reveal-ready .reveal:not(.visible) {
+  opacity: 0;
+  transform: translateY(22px)
 }
 
 .reveal.visible {
