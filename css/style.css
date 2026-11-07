@@ -4113,8 +4113,8 @@ textarea {
 }
 
 .navbar .brand-logo {
-  width: 180px;
-  height: 180px;
+  width: 240px;
+  height: 90px;
   object-fit: contain;
   display: block;
 }
