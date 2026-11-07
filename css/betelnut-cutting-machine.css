@@ -136,6 +136,57 @@
   border-bottom: 1px solid var(--line);
 }
 
+.specification-table .specification-price-row {
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+}
+
+.price-breakdown summary {
+  display: list-item;
+  cursor: pointer;
+  color: #5D6875;
+  font-weight: 400;
+}
+
+.price-breakdown[open] summary {
+  margin-bottom: 10px;
+}
+
+.price-breakdown dl {
+  margin: 0;
+}
+
+.specification-table .price-breakdown dl > div {
+  grid-template-columns: minmax(120px, 1fr) 1fr;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 0;
+  font-size: .9rem;
+}
+
+.price-breakdown dt {
+  color: var(--muted);
+}
+
+.price-breakdown dd {
+  margin: 0;
+}
+
+.specification-table .price-breakdown dl > .price-breakdown-total {
+  grid-template-columns: minmax(120px, 1fr) 1fr;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 14px 0 8px;
+  border-top: 1px solid var(--line);
+  border-bottom: 0;
+  color: #5D6875;
+  font-weight: 400;
+}
+
+.price-breakdown-total dd {
+  color: #5D6875;
+}
+
 .specification-table span {
   color: var(--muted);
 }
