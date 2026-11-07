@@ -9,8 +9,8 @@
 
     <!-- Main CSS -->
     <link rel="stylesheet" href="css/style.css?v=visible-content-1">
-    <link rel="stylesheet" href="css/home-hero-layout.css">
-    <link rel="stylesheet" href="css/fixed-layout.css">
+    <link rel="stylesheet" href="css/fixed-layout.css?v=all-page-menu-1">
+    <link rel="stylesheet" href="css/home-hero-layout.css?v=home-menu-2">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,36 +27,37 @@
          NAVBAR
     ================================= -->
 
-    <header class="navbar">
+    <header class="navbar home-navbar">
 
         <a href="index.html" class="brand">
-            <img class="brand-logo" src="assets/images/e9f56fd7-3fe7-4c87-9dd5-ee3ed591566b.png"
+            <img class="brand-logo" src="assets/images/Gemini_Generated_Image_hm205phm205phm20.png"
                 alt="Chaudhari Manufacturing logo">
         </a>
 
-        <!-- Existing mobile menu button -->
-        <button class="menu-toggle" aria-label="Open navigation menu">
-            ☰
+        <button class="menu-toggle home-menu-toggle" type="button" aria-label="Open navigation menu"
+            aria-controls="homeNavigation" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
         </button>
 
-        <nav class="nav-links">
-
+        <nav class="nav-links" id="homeNavigation" aria-label="Main navigation">
             <a href="index.html" class="active">
-                HOME
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"></path></svg>
+                <span>HOME</span>
             </a>
-
             <a href="about.html">
-                ABOUT US
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>
+                <span>ABOUT US</span>
             </a>
-
             <a href="products.html">
-                OUR PRODUCTS
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18l-2 14H5L3 7z"></path><path d="M8 7a4 4 0 0 1 8 0"></path></svg>
+                <span>OUR PRODUCTS</span>
             </a>
-
             <a href="enquiry.html">
-                ENQUIRY
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"></path><path d="m4 7 8 6 8-6"></path></svg>
+                <span>ENQUIRY</span>
             </a>
-
         </nav>
 
     </header>
