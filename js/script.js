@@ -1,4 +1,4 @@
-\// products is now populated from the backend instead of being hardcoded.
+// products is now populated from the backend instead of being hardcoded.
 let products = [];
 let productLoadError = null;
 let productRequest = null;
