@@ -1,3 +1,24 @@
+.home-navbar {
+  min-height: 100px;
+}
+
+.home-navbar .brand-logo {
+  width: 240px;
+  height: 90px;
+}
+
+@media (max-width: 600px) {
+  .home-navbar {
+    min-height: 84px;
+    height: 84px;
+  }
+
+  .home-navbar .brand-logo {
+    width: min(220px, 58vw);
+    height: 76px;
+  }
+}
+
 .reference-hero {
   display: grid;
   grid-template-columns: minmax(330px, .78fr) minmax(0, 1.22fr);
