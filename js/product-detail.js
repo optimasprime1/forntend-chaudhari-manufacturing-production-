@@ -69,10 +69,13 @@ function renderSpecifications(product) {
   const excluded = new Set([
     'id', 'v', 'createdat', 'updatedat', 'name', 'description',
     'short', 'image', 'images', 'featuredimage', 'imageurl', 'keywords',
-    'productid', 'category', 'categoryid', 'categoryname', 'art',
+    'productid', 'category', 'categoryid', 'categoryname', 'price',
+    'baseprice', 'packingcharges', 'transportcharges', 'gstpercentage', 'art',
     'tags', 'active', 'isactive'
   ]);
-  const rows = Object.entries(product)
+  const rows = [
+    renderPriceBreakdown(product),
+    ...Object.entries(product)
     .filter(([key, value]) =>
       !excluded.has(key.replace(/[^a-z0-9]/gi, '').toLowerCase()) &&
       value !== undefined && value !== null && value !== ''
@@ -82,10 +85,10 @@ function renderSpecifications(product) {
         .replace(/([A-Z])/g, ' $1')
         .replace(/_/g, ' ')
         .replace(/^./, character => character.toUpperCase());
-      const displayValue = Array.isArray(value) ? value.join(', ') : String(value);
+      const displayValue = formatSpecificationValue(value);
       return `<div><strong>${escapeHtml(label)}</strong><span>${escapeHtml(displayValue)}</span></div>`;
     })
-    .join('');
+  ].join('');
 
   document.getElementById('productDetailSpecs').innerHTML =
     rows || '<div><strong>Details</strong><span>Contact us for complete specifications.</span></div>';
@@ -96,6 +99,7 @@ function renderBetelnutSpecifications(product) {
     ? product.specifications
     : {};
   const allowedFields = [
+    { label: 'Price', keys: ['price'] },
     { label: 'Model', keys: ['model'] },
     { label: 'Average', keys: ['average', 'avg'] },
     { label: 'Motor', keys: ['motor'] },
@@ -105,8 +109,11 @@ function renderBetelnutSpecifications(product) {
   const rows = allowedFields
     .map(field => {
       const value = findSpecificationValue(field.keys, product, specifications);
+      if (field.label === 'Price') {
+        return renderPriceBreakdown(product, value);
+      }
       if (value === undefined || value === null || value === '') return '';
-      const displayValue = Array.isArray(value) ? value.join(', ') : String(value);
+      const displayValue = formatSpecificationValue(value);
       return `<div><strong>${escapeHtml(field.label)}</strong><span>${escapeHtml(displayValue)}</span></div>`;
     })
     .filter(Boolean)
@@ -114,6 +121,63 @@ function renderBetelnutSpecifications(product) {
 
   document.getElementById('productDetailSpecs').innerHTML =
     rows || '<div><strong>Details</strong><span>Contact us for complete specifications.</span></div>';
+}
+
+function renderPriceBreakdown(product, price = product.price) {
+  const displayPrice = getProductTotalPrice(product, price);
+  const charges = [
+    ['Base Price', product.basePrice],
+    ['Packing Charges', product.packingCharges],
+    ['Transport Charges', product.transportCharges],
+    ['GST', product.gstPercentage, true]
+  ];
+  const chargeRows = charges.map(([label, value, isPercentage]) => {
+    const displayValue = value === null || value === undefined || value === ''
+      ? 'Not added yet'
+      : isPercentage
+        ? `${formatSpecificationValue(value)}%`
+        : formatProductPrice(value);
+    return `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(displayValue)}</dd></div>`;
+  }).join('');
+
+  return `
+    <div class="specification-price-row">
+      <strong>Price</strong>
+      <details class="price-breakdown">
+        <summary>${escapeHtml(formatProductPrice(displayPrice))}</summary>
+        <dl>
+          ${chargeRows}
+          <div class="price-breakdown-total">
+            <dt>Product Price</dt>
+            <dd>${escapeHtml(formatProductPrice(displayPrice))}</dd>
+          </div>
+        </dl>
+      </details>
+    </div>
+  `;
+}
+
+function getProductTotalPrice(product, price = product.price) {
+  const savedPrice = Number(price);
+  if (price !== null && price !== undefined && price !== '' && Number.isFinite(savedPrice) && savedPrice >= 0) {
+    return savedPrice;
+  }
+
+  const charges = [product.basePrice, product.packingCharges, product.transportCharges, product.gstPercentage];
+  if (charges.some(value => value === null || value === undefined || value === '')) return null;
+  if (charges.some(value => typeof value !== 'number' && typeof value !== 'string')) return null;
+
+  const [basePrice, packingCharges, transportCharges, gstPercentage] = charges.map(Number);
+  if (
+    ![basePrice, packingCharges, transportCharges, gstPercentage].every(Number.isFinite) ||
+    [basePrice, packingCharges, transportCharges, gstPercentage].some(value => value < 0) ||
+    gstPercentage > 100
+  ) {
+    return null;
+  }
+
+  const taxableAmount = basePrice + packingCharges + transportCharges;
+  return taxableAmount + taxableAmount * gstPercentage / 100;
 }
 
 function findSpecificationValue(keys, product, specifications) {
@@ -126,6 +190,16 @@ function findSpecificationValue(keys, product, specifications) {
     }
   }
   return undefined;
+}
+
+function formatSpecificationValue(value) {
+  if (Array.isArray(value)) return value.map(formatSpecificationValue).join(', ');
+  if (value && typeof value === 'object') {
+    return Object.entries(value)
+      .map(([key, item]) => `${key.replace(/([a-z])([A-Z])/g, '$1 $2')}: ${formatSpecificationValue(item)}`)
+      .join(', ');
+  }
+  return String(value ?? '');
 }
 
 function resolveProductImage(product) {
