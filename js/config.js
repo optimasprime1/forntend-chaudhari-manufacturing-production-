@@ -8,7 +8,7 @@ const configuredApiBase = window.CHAUDHARI_API_BASE_URL || '';
 const isLocal = window.location.protocol === 'file:'
   || window.location.hostname === 'localhost'
   || window.location.hostname === '127.0.0.1';
-const productionApiBase = 'https://chaudhari-manufacturing-backend.onrender.com/api';
+const productionApiBase = 'https://backend-chaudhari-manufacturing.onrender.com/api';
 const sameOriginApiBase = `${window.location.origin}/api`;
 const API_BASE = (configuredApiBase || (
   isLocal
