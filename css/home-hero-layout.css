@@ -3,19 +3,19 @@
 }
 
 .home-navbar .brand-logo {
-  width: 240px;
-  height: 90px;
+  width: 150px;
+  height: 58px;
 }
 
 @media (max-width: 600px) {
   .home-navbar {
-    min-height: 84px;
-    height: 84px;
+    min-height: 72px;
+    height: 72px;
   }
 
   .home-navbar .brand-logo {
-    width: min(220px, 58vw);
-    height: 76px;
+    width: min(140px, 40vw);
+    height: 52px;
   }
 }
 
