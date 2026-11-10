@@ -132,48 +132,20 @@ textarea,
 @media (max-width: 600px) {
   .navbar {
     height: 72px;
+    min-height: 72px;
     padding-right: 5%;
     padding-left: 5%;
     gap: 8px;
   }
 
   .navbar .brand-logo {
-    width: 80px;
-    height: 80px;
+    width: min(140px, 40vw);
+    height: 52px;
   }
 
   .brand img {
-    width: 80px;
-    height: 80px;
-  }
-
-  .navbar .menu-toggle {
-    display: none;
-  }
-
-  .navbar .nav-links {
-    position: static;
-    display: flex;
-    flex: 1;
-    align-items: center;
-    justify-content: flex-end;
-    flex-direction: row;
-    gap: clamp(4px, 1.5vw, 10px);
-    min-width: 0;
-    padding: 0;
-    background: transparent;
-  }
-
-  .navbar .nav-links a:not(.quote-btn) {
-    display: block;
-    font-size: clamp(7px, 2.4vw, 10px);
-    white-space: nowrap;
-  }
-
-  .navbar .nav-links a + a {
-    margin-left: clamp(3px, 1vw, 6px);
-    padding-left: clamp(4px, 1.2vw, 7px);
-    border-left: 1px solid rgba(255, 255, 255, .35);
+    width: min(140px, 40vw);
+    height: 52px;
   }
 
   .nav-links {
