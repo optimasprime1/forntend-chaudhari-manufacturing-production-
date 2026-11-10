@@ -1,514 +1,291 @@
-// products is now populated from the backend instead of being hardcoded.
-let products = [];
-let productLoadError = null;
-let productRequest = null;
-const WHATSAPP_NUMBER = '919033720758';
+const grid = document.querySelector("#product-grid");
+const emptyState = document.querySelector("#empty-state");
+const searchInput = document.querySelector("#product-search");
+const filterButtons = [...document.querySelectorAll(".filter-chip")];
+const menuToggle = document.querySelector(".menu-toggle");
+const mainNav = document.querySelector(".main-nav");
+const productDialog = document.querySelector("#product-dialog");
+const productDialogContent = document.querySelector("#product-dialog-content");
 
-document.addEventListener('copy', event => {
-  if (event.target instanceof Element && event.target.closest('input, textarea, [contenteditable]')) return;
-  event.preventDefault();
-});
+let activeFilter = "All";
+let latestRequest = 0;
+let latestProductDetailsRequest = 0;
+let lastProductCard = null;
+let catalogProducts = [];
 
-document.addEventListener('DOMContentLoaded', () => {
-  const t = document.querySelector('.menu-toggle'), n = document.querySelector('.nav-links');
-  if (t && n) {
-    t.onclick = () => {
-      const isOpen = n.classList.toggle('show');
-      t.setAttribute('aria-expanded', String(isOpen));
-      t.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
-    };
-
-    n.addEventListener('click', event => {
-      if (event.target instanceof Element && event.target.closest('a')) {
-        n.classList.remove('show');
-        t.setAttribute('aria-expanded', 'false');
-        t.setAttribute('aria-label', 'Open navigation menu');
-      }
-    });
-
-    document.addEventListener('keydown', event => {
-      if (event.key === 'Escape' && n.classList.contains('show')) {
-        n.classList.remove('show');
-        t.setAttribute('aria-expanded', 'false');
-        t.setAttribute('aria-label', 'Open navigation menu');
-        t.focus();
-      }
-    });
-  }
-
-  const ob = new IntersectionObserver(es => es.forEach(e => {
-    if (e.isIntersecting) {
-      e.target.classList.add('visible');
-      if (e.target.classList.contains('stat')) counter(e.target.querySelector('strong'));
-      ob.unobserve(e.target);
-    }
-  }), { threshold: .15 });
-  document.body.classList.add('reveal-ready');
-  document.querySelectorAll('.reveal').forEach(x => ob.observe(x));
-
-  // Statistics: fetch live numbers from the backend and populate any
-  // <strong data-stat="..."> element before its counter animation runs.
-  if (document.querySelector('[data-stat]')) loadStatistics();
-
-  if (document.getElementById('productList')) {
-    loadProducts().then(() => { render(products); catalog(); });
-  }
-
-  const categoryGrid = document.getElementById('categoryProductGrid');
-  if (categoryGrid) {
-    loadProducts().then(() => renderCategoryProducts(categoryGrid.dataset.category));
-  }
-
-  if (document.getElementById('enquiryForm')) formSetup();
-});
-
-function counter(el) {
-  if (el.dataset.done) return;
-  el.dataset.done = 1;
-  let target = +el.dataset.target, s = el.dataset.suffix || '', start = performance.now();
-  function go(now) {
-    let p = Math.min((now - start) / 1200, 1);
-    el.textContent = Math.floor(target * p) + s;
-    if (p < 1) requestAnimationFrame(go); else el.textContent = target + s;
-  }
-  requestAnimationFrame(go);
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
-function formatProductPrice(value) {
-  if (value === null || value === undefined || value === '') return 'Price on request';
+function debounce(callback, delay) {
+  let timer;
+  return (...args) => {
+    window.clearTimeout(timer);
+    timer = window.setTimeout(() => callback(...args), delay);
+  };
+}
+
+function showProductLoadingState() {
+  grid.setAttribute("aria-busy", "true");
+  emptyState.hidden = true;
+  grid.innerHTML = Array.from({ length: 6 }, () => `
+    <div class="product-card product-card--skeleton" aria-hidden="true">
+      <div class="product-body">
+        <span class="product-skeleton-line product-skeleton-line--title"></span>
+        <span class="product-skeleton-line product-skeleton-line--short"></span>
+        <span class="product-skeleton-line"></span>
+        <span class="product-skeleton-line product-skeleton-line--medium"></span>
+      </div>
+    </div>
+  `).join("");
+}
+
+function formatSpecification(value) {
+  if (Array.isArray(value)) return value.join(", ");
+  if (value && typeof value === "object") return JSON.stringify(value);
+  return String(value ?? "");
+}
+
+function formatPrice(value) {
+  if (value === null || value === undefined || value === "") return "Price on request";
   const price = Number(value);
-  if (!Number.isFinite(price) || price < 0) return 'Price on request';
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 2
+  if (!Number.isFinite(price) || price < 0) return "Price on request";
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
   }).format(price);
 }
 
-// ---- Statistics (GET /api/statistics) ----
-async function loadStatistics() {
-  try {
-    const res = await fetch(`${API_BASE}/statistics`);
-    if (!res.ok) throw new Error('Failed to load statistics');
-    const stats = await res.json();
-    const data = stats.data || stats; // support either {data:{...}} or {...}
-    document.querySelectorAll('[data-stat]').forEach(el => {
-      const key = el.dataset.stat;
-      if (data[key] !== undefined && data[key] !== null) {
-        el.dataset.target = data[key];
-      }
-    });
-  } catch (err) {
-    // Keep the placeholder numbers already present in the HTML if the
-    // API is unreachable, so the site still looks correct offline.
-    console.warn('Statistics API unavailable, using placeholder values.', err);
-  }
+function formatFieldName(value) {
+  return String(value)
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-// ---- Products (GET /api/products) ----
-async function loadProducts(force = false) {
-  if (!force && products.length) return products;
-  if (!force && productRequest) return productRequest;
-
-  productRequest = (async () => {
-    try {
-      const res = await fetch(`${API_BASE}/products`, { cache: 'no-store' });
-      if (!res.ok) throw new Error('Failed to load products');
-      const body = await res.json();
-      const rows = Array.isArray(body) ? body : body.data;
-      if (!Array.isArray(rows)) throw new Error('Products API returned an invalid response.');
-      products = rows.map(normalizeProduct);
-      productLoadError = null;
-      return products;
-    } catch (err) {
-      console.error('Products API unavailable.', err);
-      productLoadError = err;
-      products = [];
-      throw err;
-    } finally {
-      productRequest = null;
-    }
-  })();
-
-  return productRequest;
-}
-
-function normalizeProduct(product) {
-  const categoryMap = {
-    'supari-cutting': 'Betelnut',
-    'almond-cutting': 'Almond',
-    'cutting-machines': 'Processing'
-  };
-  const rawCategory = product.category && typeof product.category === 'object'
-    ? product.category.name || product.category.categoryName || product.category.categoryId
-    : product.category;
-  const categoryValue = rawCategory || product.categoryId || product.categoryName || '';
-  const category = categoryMap[String(categoryValue).toLowerCase()] || categoryValue;
-  const id = product.id || product.productId || product._id || product.slug;
-  const name = product.name || product.model || 'Product';
-  const description = product.description || product.shortDescription || '';
-  return {
-    ...product,
-    id,
-    name,
-    category,
-    keywords: [product.keywords, product.model, product.productId, product.categoryId, product.slug]
-      .filter(Boolean)
-      .join(' '),
-    image: resolveProductImage(product, category),
-    short: product.short || product.shortDescription || description,
-    description,
-    material: product.material || product.materials || '',
-    dimensions: product.dimensions || '',
-    technical: product.technical || product.technicalInfo || ''
-  };
-}
-
-function resolveProductImage(product, category) {
-  const categoryText = String(category || '').toLowerCase();
-  if (categoryText.includes('almond')) {
-    return 'assets/images/de5fbc53-f5bd-45a6-adb1-28283e892226.png';
-  }
-
-  const fallback = categoryText.includes('betelnut') || categoryText.includes('supari')
-    ? 'assets/images/947418eb-9873-41ce-8302-8c2256c72f1d.png'
-    : 'assets/images/5c1abfb5-9577-4a7b-94a6-26ca39982110.png';
-  const image = product.image || product.featuredImage || product.image_url;
-  if (typeof image !== 'string' || !image) return fallback;
-  if (/^https?:\/\//i.test(image)) return image;
-
-  const fileName = image.replace(/\\/g, '/').split('/').pop();
-  const localImages = new Set([
-    '947418eb-9873-41ce-8302-8c2256c72f1d.png',
-    'de5fbc53-f5bd-45a6-adb1-28283e892226.png',
-    '5c1abfb5-9577-4a7b-94a6-26ca39982110.png'
+function renderProductDetails(product) {
+  const hiddenFields = new Set([
+    "_id",
+    "__v",
+    "productId",
+    "category",
+    "categoryId",
+    "categoryName",
+    "art",
+    "isActive",
+    "name",
+    "model",
+    "average",
+    "description",
+    "price",
+    "images",
+    "specifications",
+    "tags",
+    "createdAt",
+    "updatedAt",
+    "migratedToCategoryCollection",
   ]);
-  return localImages.has(fileName)
-    ? `assets/images/${fileName}`
-    : fallback;
-}
-
-function productBelongsToCategory(product, category) {
-  const value = `${product.category} ${product.categoryId || ''} ${product.keywords || ''}`.toLowerCase();
-  if (category === 'Betelnut') {
-    return value.includes('betelnut') || value.includes('supari');
-  }
-  if (category === 'Almond') {
-    return value.includes('almond');
-  }
-  return product.category.toLowerCase() === category.toLowerCase();
-}
-
-function renderCategoryProducts(category) {
-  const list = document.getElementById('categoryProductGrid');
-  const noResults = document.getElementById('categoryNoResults');
-  if (!list || !noResults) return;
-
-  if (productLoadError) {
-    list.innerHTML = '';
-    noResults.textContent = 'Products could not be loaded. Please check that the backend is running.';
-    noResults.style.display = 'block';
-    return;
-  }
-
-  const categoryProducts = products.filter(product => productBelongsToCategory(product, category));
-  const isAlmondCategory = category === 'Almond';
-  list.innerHTML = categoryProducts.map(product => `
-    <article class="product-card reveal">
-      <img class="category-product-image" src="${product.image}" alt="${product.name}">
-      <div class="card-body">
-        <h3>${product.name}</h3>
-        ${isAlmondCategory && product.model
-          ? `<span class="category-product-model">Model: ${escapeHtml(product.model)}</span>`
-          : ''}
-        <p>${product.short}</p>
-        <a class="btn btn-small" href="${isAlmondCategory
-          ? `product-detail.html?id=${encodeURIComponent(product.id)}`
-          : `enquiry.html?product=${encodeURIComponent(product.name)}`}">${isAlmondCategory ? 'View Details' : 'Request Quote'}</a>
-      </div>
-    </article>
-  `).join('');
-  noResults.textContent = `No ${category.toLowerCase()} machines found.`;
-  noResults.style.display = categoryProducts.length ? 'none' : 'block';
-  list.querySelectorAll('.reveal').forEach(card => card.classList.add('visible'));
-}
-
-function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, character => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;'
-  }[character]));
-}
-
-function render(items, searchTerm = '') {
-  const list = document.getElementById('productList');
-  const no = document.getElementById('noResults');
-  const noResultsMessage = document.getElementById('noResultsMessage');
-  const noResultsSearchMessage = document.getElementById('noResultsSearchMessage');
-  const noResultsQuery = document.getElementById('noResultsQuery');
-  const noResultsIcon = no.querySelector('.no-results-icon');
-  if (productLoadError) {
-    list.innerHTML = '';
-    noResultsMessage.textContent = 'Products could not be loaded. Please check that the backend is running.';
-    noResultsMessage.hidden = false;
-    noResultsSearchMessage.hidden = true;
-    noResultsIcon.hidden = true;
-    no.style.display = 'block';
-    return;
-  }
-  list.innerHTML = items.map(p => `
-    <article class="catalog-card" id="${escapeHtml(p.id)}" data-product-id="${escapeHtml(p.id)}"
-      tabindex="0" aria-label="View details for ${escapeHtml(p.name)}">
-      <img src="${escapeHtml(p.image)}" alt="${escapeHtml(p.name)}">
-      <div class="card-body">
-      <span class="category-tag">${escapeHtml(p.category)}</span>
-      <h3>${escapeHtml(p.name)}</h3>
-        <p>${escapeHtml(p.short)}</p>
-        <div class="card-actions">
-          <button class="btn btn-small" type="button" data-action="view-details">View Details</button>
-          <a class="btn btn-small quote-link" href="enquiry.html?product=${encodeURIComponent(p.name)}">Request Quote</a>
+  const customSpecifications = Object.entries(product).filter(
+    ([key, value]) => !hiddenFields.has(key) && value !== null && value !== undefined && value !== "",
+  );
+  const average = product.average
+    ? formatSpecification(product.average)
+    : "Not specified";
+  const specifications = [
+    ["Name", product.name],
+    ...(product.model ? [["Model", product.model]] : []),
+    ["Average", average],
+    ...Object.entries(product.specifications && typeof product.specifications === "object" ? product.specifications : {}),
+    ...customSpecifications,
+  ];
+  const specificationList = specifications.length
+    ? `
+      <section class="product-dialog__specifications" aria-labelledby="product-specifications-title">
+        <h3 id="product-specifications-title">Specifications</h3>
+        <dl>
+          ${specifications.map(([name, value]) => `
+            <div>
+              <dt>${escapeHtml(formatFieldName(name))}</dt>
+              <dd>${escapeHtml(formatSpecification(value))}</dd>
+            </div>
+          `).join("")}
+        </dl>
+      </section>
+    `
+    : "";
+  const tags = Array.isArray(product.tags) && product.tags.length
+    ? `<p class="product-dialog__tags">${product.tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</p>`
+    : "";
+  const categoryProductsSection = catalogProducts.length
+    ? `
+      <section class="product-dialog__other-products" aria-labelledby="category-products-title">
+        <h3 id="category-products-title">More products</h3>
+        <div class="product-dialog__product-grid">
+          ${catalogProducts.map((item) => {
+            return `
+              <button class="product-dialog__product-card" type="button" data-related-product-id="${escapeHtml(item.productId || item._id)}">
+                <span class="product-dialog__product-name"><strong>Name:</strong> ${escapeHtml(item.name)}</span>
+                <span class="product-dialog__product-field"><strong>Price:</strong> ${escapeHtml(formatPrice(item.price))}</span>
+                <span class="product-dialog__product-field"><strong>Average:</strong> ${escapeHtml(item.average ? formatSpecification(item.average) : "Not specified")}</span>
+                <span class="product-dialog__product-description">${escapeHtml(item.description)}</span>
+              </button>
+            `;
+          }).join("")}
         </div>
-      </div>
-    </article>
-  `).join('');
-  const hasSearchTerm = Boolean(searchTerm.trim());
-  noResultsMessage.textContent = 'No products found. Try another search.';
-  noResultsQuery.textContent = `“${searchTerm.trim()}”`;
-  noResultsMessage.hidden = items.length > 0 || hasSearchTerm;
-  noResultsSearchMessage.hidden = items.length > 0 || !hasSearchTerm;
-  noResultsIcon.hidden = items.length > 0 || !hasSearchTerm;
-  no.style.display = items.length ? 'none' : 'block';
+      </section>
+    `
+    : "";
+
+  productDialogContent.innerHTML = `
+    <button class="product-dialog__close" type="button" data-close-product-dialog aria-label="Close product details">×</button>
+    <h2 id="product-dialog-title">${escapeHtml(product.name)}</h2>
+    <p class="product-dialog__price"><strong>Price:</strong> ${escapeHtml(formatPrice(product.price))}</p>
+    ${specificationList}
+    <p class="product-dialog__description">${escapeHtml(product.description)}</p>
+    ${tags}
+    ${categoryProductsSection}
+  `;
 }
 
-function catalog() {
-  let cat = 'all', search = document.getElementById('productSearch');
-  const list = document.getElementById('productList');
-  list.addEventListener('click', event => {
-    const target = event.target;
-    if (!(target instanceof Element) || target.closest('a')) return;
-    const card = target.closest('.catalog-card');
-    if (!card) return;
-    navigateToProductDetails(card.dataset.productId);
-  });
-  list.addEventListener('keydown', event => {
-    if (event.target !== event.currentTarget && !(event.target instanceof HTMLElement && event.target.classList.contains('catalog-card'))) return;
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    event.preventDefault();
-    const card = event.target instanceof HTMLElement && event.target.classList.contains('catalog-card')
-      ? event.target
-      : null;
-    if (card) navigateToProductDetails(card.dataset.productId);
-  });
-  document.querySelectorAll('.filter').forEach(b => b.onclick = () => {
-    document.querySelectorAll('.filter').forEach(x => x.classList.remove('active'));
-    b.classList.add('active');
-    cat = b.dataset.category;
-    apply();
-  });
-  search.oninput = apply;
-  function apply() {
-    const query = search.value.trim();
-    const q = query.toLowerCase();
-    render(products.filter(p => (cat === 'all' || p.category.toLowerCase() === cat.toLowerCase()) && (`${p.name} ${p.model || ''} ${p.productId || ''} ${p.category} ${p.keywords || ''}`).toLowerCase().includes(q)), query);
+async function openProductDetails(productId, card) {
+  const requestId = ++latestProductDetailsRequest;
+  if (!productDialog.open) lastProductCard = card;
+  productDialogContent.innerHTML = `
+    <button class="product-dialog__close" type="button" data-close-product-dialog aria-label="Close product details">×</button>
+    <p class="product-dialog__status" role="status">Loading product details...</p>
+  `;
+  if (!productDialog.open) productDialog.showModal();
+
+  try {
+    const response = await window.ChaudhariAPI.get(`products/${encodeURIComponent(productId)}`);
+    if (requestId !== latestProductDetailsRequest || !productDialog.open) return;
+    const categoryQuery = new URLSearchParams({ categoryId: response.data.categoryId, limit: "100" });
+    const catalogResponse = await window.ChaudhariAPI.get(`products?${categoryQuery.toString()}`);
+    if (requestId !== latestProductDetailsRequest || !productDialog.open) return;
+    catalogProducts = Array.isArray(catalogResponse.data) ? catalogResponse.data : [];
+    renderProductDetails(response.data);
+  } catch (error) {
+    if (requestId !== latestProductDetailsRequest || !productDialog.open) return;
+    productDialogContent.innerHTML = `
+      <button class="product-dialog__close" type="button" data-close-product-dialog aria-label="Close product details">×</button>
+      <p class="product-dialog__status" role="alert">${escapeHtml(error.message || "Unable to load product details.")}</p>
+    `;
+    console.error("Unable to load product details from the backend:", error);
   }
 }
 
-function navigateToProductDetails(id) {
-  if (!id) return;
-  window.location.href = `product-detail.html?id=${encodeURIComponent(id)}`;
+function renderProducts(products) {
+  grid.innerHTML = products
+    .map(
+      (product) => {
+        const name = escapeHtml(product.name);
+        const showNutDetails = ["ALMOND", "BETELNUT"].includes(String(product.categoryId || "").toUpperCase());
+        const average = product.average
+          ? `<p class="product-card__average"><strong>Average:</strong> ${escapeHtml(formatSpecification(product.average))}</p>`
+          : showNutDetails
+            ? '<p class="product-card__average"><strong>Average:</strong> Not specified</p>'
+            : "";
+        const price = `<p class="product-card__price"><strong>Price:</strong> ${escapeHtml(formatPrice(product.price))}</p>`;
+        return `
+        <article class="product-card" data-product-id="${escapeHtml(product.productId || product._id)}" role="button" tabindex="0" aria-haspopup="dialog" aria-label="View details for ${name}">
+          <div class="product-body">
+            <h3>${showNutDetails ? `<span class="product-card__name-label">Name:</span> ${name}` : name}</h3>
+            ${price}
+            ${average}
+            <p>${escapeHtml(product.description)}</p>
+            <span class="product-link">View machine <span aria-hidden="true">→</span></span>
+          </div>
+        </article>
+      `;
+      },
+    )
+    .join("");
+
+  emptyState.hidden = products.length !== 0;
 }
 
-document.addEventListener('click', e => {
-  let m = document.getElementById('productModal');
-  if (m && (e.target === m || e.target.classList.contains('modal-close'))) {
-    m.classList.remove('show');
-    document.body.style.overflow = '';
+grid.addEventListener("click", (event) => {
+  const card = event.target.closest(".product-card");
+  if (card) openProductDetails(card.dataset.productId, card);
+});
+
+grid.addEventListener("keydown", (event) => {
+  const card = event.target.closest(".product-card");
+  if (!card || (event.key !== "Enter" && event.key !== " ")) return;
+  event.preventDefault();
+  openProductDetails(card.dataset.productId, card);
+});
+
+productDialogContent.addEventListener("click", (event) => {
+  const relatedProduct = event.target.closest("[data-related-product-id]");
+  if (relatedProduct) {
+    openProductDetails(relatedProduct.dataset.relatedProductId, relatedProduct);
+    return;
+  }
+  if (event.target.closest("[data-close-product-dialog]")) productDialog.close();
+});
+
+productDialog.addEventListener("click", (event) => {
+  if (event.target === productDialog) productDialog.close();
+});
+
+productDialog.addEventListener("close", () => {
+  if (lastProductCard?.isConnected) lastProductCard.focus();
+});
+
+async function loadProducts() {
+  const requestId = ++latestRequest;
+  const query = searchInput.value.trim();
+  const params = new URLSearchParams();
+  if (activeFilter !== "All") params.set("category", activeFilter);
+
+  const endpoint = query ? "products/search" : "products";
+  if (query) params.set("q", query);
+
+  showProductLoadingState();
+
+  try {
+    const response = await window.ChaudhariAPI.get(`${endpoint}?${params.toString()}`);
+    if (requestId !== latestRequest) return;
+    const products = Array.isArray(response.data) ? response.data : [];
+    renderProducts(products);
+    grid.setAttribute("aria-busy", "false");
+  } catch (error) {
+    if (requestId !== latestRequest) return;
+    grid.innerHTML = "";
+    emptyState.hidden = false;
+    emptyState.textContent = "Products couldn't load. Please try again in a moment.";
+    grid.setAttribute("aria-busy", "false");
+    console.error("Unable to load products from the backend:", error);
+  }
+}
+
+searchInput.addEventListener("input", debounce(loadProducts, 250));
+
+filterButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    activeFilter = button.dataset.filter;
+    filterButtons.forEach((filterButton) => filterButton.classList.toggle("active", filterButton === button));
+    loadProducts();
+  });
+});
+
+menuToggle.addEventListener("click", () => {
+  const isOpen = mainNav.classList.toggle("open");
+  menuToggle.setAttribute("aria-expanded", String(isOpen));
+});
+
+mainNav.addEventListener("click", (event) => {
+  if (event.target.closest("a")) {
+    mainNav.classList.remove("open");
+    menuToggle.setAttribute("aria-expanded", "false");
   }
 });
 
-// ---- Enquiry form (WhatsApp) ----
-function formSetup() {
-  const form = document.getElementById('enquiryForm');
-  const productField = document.getElementById('product');
-  const productToggle = document.getElementById('productToggle');
-  const productOptions = document.getElementById('productOptions');
-  setupLocationAutocomplete();
-
-  // Reuse the already-loaded product list when available so the form doesn't
-  // trigger a duplicate fetch on every page visit.
-  loadProducts()
-    .then(() => {
-      const list = products.length ? products : [];
-      const preselectedProduct = new URLSearchParams(location.search).get('product');
-      list.forEach(p => {
-        const optionLabel = document.createElement('label');
-        optionLabel.className = 'product-option';
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.value = p.name;
-        checkbox.checked = p.name === preselectedProduct;
-
-        const optionName = document.createElement('span');
-        optionName.textContent = p.name;
-
-        optionLabel.append(checkbox, optionName);
-        productOptions.appendChild(optionLabel);
-      });
-      updateProductSelection();
-    })
-    .catch(err => console.error('Could not load product list for enquiry form.', err));
-
-  productToggle.addEventListener('click', () => {
-    const isExpanded = productToggle.getAttribute('aria-expanded') === 'true';
-    productToggle.setAttribute('aria-expanded', String(!isExpanded));
-    productOptions.hidden = isExpanded;
-  });
-  productOptions.addEventListener('change', event => {
-    if (!(event.target instanceof HTMLInputElement) || event.target.type !== 'checkbox') return;
-    updateProductSelection();
-    productOptions.hidden = true;
-    productToggle.setAttribute('aria-expanded', 'false');
-    productToggle.focus();
-  });
-  document.addEventListener('click', event => {
-    if (event.target instanceof Node && !productField.contains(event.target)) {
-      productOptions.hidden = true;
-      productToggle.setAttribute('aria-expanded', 'false');
-    }
-  });
-  productField.addEventListener('keydown', event => {
-    if (event.key === 'Escape') {
-      productOptions.hidden = true;
-      productToggle.setAttribute('aria-expanded', 'false');
-    }
-  });
-
-  function updateProductSelection() {
-    const selected = productOptions.querySelectorAll('input[type="checkbox"]:checked');
-    productToggle.textContent = selected.length
-      ? `${selected.length} product${selected.length === 1 ? '' : 's'} selected`
-      : 'Choose products';
-  }
-
-  form.onsubmit = e => {
-    e.preventDefault();
-    let ok = true;
-    const checks = [
-      ['name', field => field.value.trim().length > 1, 'Please enter your full name.'],
-      ['phone', field => /^[0-9+\-\s()]{7,20}$/.test(field.value), 'Please enter a valid phone number.'],
-      ['product', field => field.querySelector('input[type="checkbox"]:checked') !== null, 'Please select at least one product.'],
-      ['message', field => field.value.trim().length >= 5, 'Please describe your requirements.']
-    ];
-    const productFieldContainer = document.querySelector('.product-field');
-    checks.forEach(([id, test, msg]) => {
-      const x = document.getElementById(id);
-      const er = id === 'product'
-        ? productFieldContainer?.querySelector('.error') || null
-        : x.parentElement?.querySelector('.error') || null;
-      if (!er) return;
-      if (!test(x)) { er.textContent = msg; ok = false; } else er.textContent = '';
-    });
-    if (!ok) return;
-
-    const name = document.getElementById('name').value.trim();
-    const phone = document.getElementById('phone').value.trim();
-    const email = document.getElementById('email').value.trim();
-    const locationInput = document.getElementById('location');
-    const userLocation = locationInput ? locationInput.value.trim() : '';
-    const selectedProducts = Array.from(productOptions.querySelectorAll('input[type="checkbox"]:checked'))
-      .map(checkbox => checkbox.value.trim())
-      .filter(Boolean);
-    const message = document.getElementById('message').value.trim();
-    const whatsappMessage = `New Website Enquiry
-
-Name: ${name}
-Phone: ${phone}
-Email: ${email}
-Location: ${userLocation || 'Not provided'}
-Products: ${selectedProducts.join(', ')}
-
-Message:
-${message}`;
-    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(whatsappMessage)}`;
-    const whatsappWindow = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-    const successMsg = document.getElementById('formSuccess');
-    successMsg.style.color = '';
-    successMsg.textContent = whatsappWindow
-      ? 'WhatsApp opened with your enquiry. Please press Send to submit it.'
-      : 'Please allow pop-ups to open WhatsApp and send your enquiry.';
-  };
-}
-
-async function setupLocationAutocomplete() {
-  const input = document.getElementById('location');
-  const container = document.getElementById('locationAutocomplete');
-  const hint = document.getElementById('locationHint');
-  const apiKey = window.CHAUDHARI_GOOGLE_MAPS_API_KEY;
-
-  const useManualLocation = message => {
-    container.hidden = true;
-    input.hidden = false;
-    hint.textContent = message;
-    hint.hidden = false;
-  };
-
-  if (!apiKey) {
-    container.hidden = true;
-    input.hidden = false;
-    hint.hidden = true;
-    return;
-  }
-
-  const mapsScript = document.createElement('script');
-  mapsScript.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&loading=async&v=weekly`;
-  mapsScript.async = true;
-
-  try {
-    await new Promise((resolve, reject) => {
-      mapsScript.addEventListener('load', resolve, { once: true });
-      mapsScript.addEventListener('error', () => reject(new Error('Google Maps JavaScript API failed to load.')), { once: true });
-      document.head.appendChild(mapsScript);
-    });
-
-    const { PlaceAutocompleteElement } = await window.google.maps.importLibrary('places');
-    const autocomplete = new PlaceAutocompleteElement();
-    autocomplete.setAttribute('included-region-codes', 'in');
-    autocomplete.setAttribute('placeholder', 'Start typing a city, area, or address');
-    autocomplete.addEventListener('input', () => {
-      input.value = '';
-      hint.textContent = 'Choose a location from the suggestions.';
-      hint.hidden = false;
-    });
-    autocomplete.addEventListener('gmp-select', async event => {
-      const place = event.placePrediction.toPlace();
-      try {
-        await place.fetchFields({ fields: ['formattedAddress'] });
-        input.value = place.formattedAddress || place.displayName || '';
-        hint.textContent = input.value
-          ? 'Location selected.'
-          : 'Please select a suggested location or enter one manually.';
-        hint.hidden = false;
-      } catch (error) {
-        console.error('Could not retrieve the selected location.', error);
-        useManualLocation('The selected location could not be retrieved. Please enter it manually.');
-      }
-    });
-    autocomplete.addEventListener('gmp-error', event => {
-      console.error('Google Places autocomplete returned an error.', event);
-      useManualLocation('Location suggestions could not load. You can enter your city or area manually.');
-    });
-
-    container.appendChild(autocomplete);
-    container.hidden = false;
-    input.hidden = true;
-    hint.textContent = 'Choose a location from the suggestions.';
-    hint.hidden = false;
-  } catch (error) {
-    console.error('Could not initialize Google Places location suggestions.', error);
-    useManualLocation('Location suggestions could not load. You can enter your city or area manually.');
-  }
-}
+loadProducts();
