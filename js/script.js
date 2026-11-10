@@ -30,21 +30,6 @@ function debounce(callback, delay) {
   };
 }
 
-function showProductLoadingState() {
-  grid.setAttribute("aria-busy", "true");
-  emptyState.hidden = true;
-  grid.innerHTML = Array.from({ length: 6 }, () => `
-    <div class="product-card product-card--skeleton" aria-hidden="true">
-      <div class="product-body">
-        <span class="product-skeleton-line product-skeleton-line--title"></span>
-        <span class="product-skeleton-line product-skeleton-line--short"></span>
-        <span class="product-skeleton-line"></span>
-        <span class="product-skeleton-line product-skeleton-line--medium"></span>
-      </div>
-    </div>
-  `).join("");
-}
-
 function formatSpecification(value) {
   if (Array.isArray(value)) return value.join(", ");
   if (value && typeof value === "object") return JSON.stringify(value);
@@ -248,20 +233,16 @@ async function loadProducts() {
   const endpoint = query ? "products/search" : "products";
   if (query) params.set("q", query);
 
-  showProductLoadingState();
-
   try {
     const response = await window.ChaudhariAPI.get(`${endpoint}?${params.toString()}`);
     if (requestId !== latestRequest) return;
     const products = Array.isArray(response.data) ? response.data : [];
     renderProducts(products);
-    grid.setAttribute("aria-busy", "false");
   } catch (error) {
     if (requestId !== latestRequest) return;
     grid.innerHTML = "";
     emptyState.hidden = false;
-    emptyState.textContent = "Products couldn't load. Please try again in a moment.";
-    grid.setAttribute("aria-busy", "false");
+    emptyState.textContent = "No products found. Try another search.";
     console.error("Unable to load products from the backend:", error);
   }
 }
